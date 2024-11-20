@@ -1,0 +1,114 @@
+vue2=>vue3
+1 template 里之前必须只能存在一个盒子，现在可以多个
+2 可以去看官网 费兼容行改变
+
+
+1. 创建 v3和 v2 的命令 
+     vue --version (查看脚手架版本)
+     npm i -g @vue/cli (安装脚手架)
+     vue create vue_test （vue_test只是项目名称  具体配置v2还是v3 需要执行改命令后进行配置）
+
+2. 路由
+     history模式：
+     v2:mode:'history'
+     v3:history:createWebHistory()
+
+     query / params  
+     总结：直接用query 然后配置 props: true  在组件里直接获取值defineProps(['id','title','content']) 
+
+3. 组件通信：     
+     
+     1 props ：在子组件身上 关键在于用 v-bind 把属性和方法进行一个传递 在子组件里通过defineProps进行接受使用 
+     （ 注意传递的函数是v-bind 在子组件里通过回调形式传回来值 props.sendToy(value) ）
+     2 自定义事件 ：不再是v-bind 冒号形式的，而是@符号后跟着自定义名称的事件 ，在子组件里也不是用defineProps接受事件了，而是defineEmits
+     （const emit= defineEmits(['send-toy'] emit('send-toy',value) )
+     3 插件emitter ：这个需要再main.ts/js 上引入挂载 app.config.globalProperties.$emitter = emitter//挂载
+     （通过 emitter.on绑定事件 和 emitter.emit触发事件）
+     4 双向绑定 ：直接在子组件身上用 v-model：自定义名称 进行传递和接收，在子组件里用 defineProps(['自定义名称']) 正常接收变量
+     然后通过 自定义事件  const emit=defineEmits(['update:自定义名称']) 以回调函数形式把值传递回父组件里
+     触发顺序是：先触发@input="emit('update:ming',$event.target.value)" 然后再走 const emit=defineEmits(['update:ming'])
+     （注意：$event.target.value是告诉你把那个值传回给父组件，defineEmits是告诉你那些键名是可以传给父组件的）
+     （注意  @input="emit('update:自定义事件',$event.target.value)" update: 这是官方规定的写法。）
+     5 $attr：这个属性对象可以进行透传，不过相比 provide&inject透传 多个东西，需要在过往的组件身上都要 v-bind="$attrs" 才可以完全实现透传
+     （注意 $attrs 有一个坑，当子组件使用了一个变量，那孙子组件是获取不到被使用的那个变量。）
+     6 ref & $refs & $parent  ：
+          1 正常的 ref 通过绑定子组件，获取子组件身上的属性进行传递，
+          2 属性对象 $refs 和 $parent 直接在事件里获取的 一个是在父组件里拿所有子组件里 defineExpose 抛出的一个个refImpl对象变量，
+            另一个是在子组件里拿父组件抛出的 一个个refImpl对象变量
+     （注意：defineExpose抛出的是一个个refImpl对象，所以可以直接实现在父组件操作子组件的值，这是因为vue3的组件保护机制设计原因，需要子组件用 defineExpose({house}) 将权限抛出去，组件之间才可以实现。
+     7 provide & inject：直接从vue里引入 和插件emitter很像，一个provide抛出，一个inject引用
+
+
+     关于组件通信的其他知识点：
+     1.
+     <Child :car="car" :sendToy="getToy"/> 
+     <Child :car="car" @send-toy="getToy"/> 
+     这两种都是vue的传值方式，第一种是普通的传值和回调函数，第二种是普通传值和自定义事件
+     第二种事件方法比第一种很麻烦，为什么市面上还是要用它呢？
+     虽然这种方式可行，但并不常见，因为它打破了组件间的通信规范，子组件不应直接操作父组件的内部逻辑。
+     
+     2.$refs和$parent 都需要被操作的组件用 defineExpose 抛出数据 否则是更改不了的
+
+     3.$attrs 有一个坑，当子组件使用了一个变量，那孙子组件是获取不到被使用的那个变量
+
+     4.插槽：
+          注意：需要把数据抛出  defineExpose({toy,book})
+    
+
+          分为默认插槽、具名插槽、作用域插槽
+          v-slot 只能用在 组件或 template标签上
+
+          1.默认插槽   
+          <Category title="热门XXXX" > XXXXXX </Category>
+
+          <slot>默认内容</slot>
+          2.
+          <Category title="热门XXXX" >
+               <template v-slot:s3>
+                    <div v-for="v in games" :key="v.id">{{ v.name }}</div>
+               </template>
+               <template v-slot:s2>
+                    <h4>二级标题</h4>
+               </template>
+          </Category>
+
+          <slot name="s2">默认内容</slot>
+          <slot name="s3">默认内容</slot>
+          3.
+          <Game>
+               <template v-slot="params">
+                    <ul>
+                    <li v-for="v in params.youxi" :key="v.id">{{ v.name }}</li>
+                    </ul>
+               </template>
+          </Game>
+          <slot :youxi="newGames"></slot>
+
+     5.总结用法
+     父传子：props、v-model、$refs、 默认插槽 、具名插槽
+     子传父：props、自定义事件、v-model、$parent、作用域插槽
+     祖孙互传：$attrs、provide+inject
+     兄弟间、任意组件间：mitt、pinia
+
+4. 知识点
+     1.ref 什么时候.value 为什么有些时候不用.value 
+          let obj=reactive({
+               a:1,
+               b:2,
+               c:ref(3)
+          })
+          console.log("@@@",obj.a,obj.b,obj.c);//reactive 会 自动解析 ref  所以打印c 不需要 obj.c.value
+
+     pinia:
+          storeToRefs:
+          const loveStore=useLoveStore()  拿取数据
+          const {list}=storeToRefs(loveStore)    storeToRefs 不让其丢失响应式  
+          为什么用storeToRefs 而不是用 toRefs 呢？ storeToRefs不会对方法进行包裹 优化性能
+
+     $subscribe:
+          用来监视数据的里面有两个参数  第一个是修改前的数据  第二个是修改后的数据
+
+     defineExpose 一般不需要引入 是宏函数, 而defineProps 则是需要引入的
+
+     全局API转移应用对象：就是之前Vue.config 都变成 app.config…… 
+
