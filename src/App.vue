@@ -7,6 +7,7 @@
     name:"App",
     components:{Person}
   }
+  console.log(111);
 </script>
 <style scoped>
 .className{
