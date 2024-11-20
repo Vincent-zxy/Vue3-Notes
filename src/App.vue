@@ -8,6 +8,7 @@
     components:{Person}
   }
   console.log(111);
+  console.log(2222);
 </script>
 <style scoped>
 .className{
